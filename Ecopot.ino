@@ -4,24 +4,31 @@
 #include <Wire.h>
 #include <ErriezBH1750.h>
 
-const char* ssid = "Pimmmmm";
-const char* password = "pimcutemak";
+const char* ssid = "Meen";
+const char* password = "donotuseme";
 
 FirebaseData firebaseData;
 
-// Initialize DHT sensor.
+// Declaration of DHT sensor.
 #define DHTTYPE DHT11   // DHT 11
 const int DHTPin = 23;
 DHT dht(DHTPin, DHTTYPE);
 
-
-// Initialize Lux sensor.
+// Declaration of Lux sensor.
 BH1750 sensor(LOW);
 float lumi = 0;
 
-// Initialize Soil Moisture sensor.
+// Declaration of Soil Moisture sensor.
 const int moisturePin = A0;
 int mois = 0;
+
+// Declaration for Pot Controller
+bool led_controller = false;
+bool water_controller = false;
+bool psb_controller = false;
+const int led_pin = 14;
+const int water_pin = 12;
+const int psb_pin = 13;
 
 void setup() {
   dht.begin();
@@ -37,9 +44,11 @@ void setup() {
 
   // Start conversion
   sensor.startConversion();
+
+  pinMode(led_pin, OUTPUT);
+  pinMode(psb_pin, OUTPUT);
+  pinMode(water_pin, OUTPUT);
 }
-
-
 
 void loop() {
  
@@ -66,38 +75,10 @@ void loop() {
   mois = map(mois,4095,1000,0,100);
   
   writeToFirebase(humi, temp, lumi, mois);
-  
 
-  if (Firebase.getFloat(firebaseData, "/temperature")) {
-    if (firebaseData.dataType() == "float") {
-      int val = firebaseData.floatData();
-      Serial.print("temp: ");
-      Serial.println(val);
-    }
-  }
-  if (Firebase.getFloat(firebaseData, "/humidity")) {
-    if (firebaseData.dataType() == "float") {
-      int val = firebaseData.floatData();
-      Serial.print("humi: ");
-      Serial.println(val);
-    }
-  }
-  if (Firebase.getFloat(firebaseData, "/luminance")) {
-    if (firebaseData.dataType() == "float") {
-      int val = firebaseData.floatData();
-      Serial.print("lumi: ");
-      Serial.println(val);
-    }
-  }
-  if (Firebase.getFloat(firebaseData, "/moisture")) {
-    if (firebaseData.dataType() == "float") {
-      int val = firebaseData.floatData();
-      Serial.print("mois: ");
-      Serial.println(val);
-    }
-  }
-  
-  delay(5000);
+  potControllerOpt();
+
+  delay(0);
 }
 
 
@@ -114,8 +95,44 @@ void connectWifi() {
 }
 
 void writeToFirebase(float humi, float temp, float lumi, float mois) {
-  Firebase.setFloat(firebaseData, "/humidity", humi);
-  Firebase.setFloat(firebaseData, "/temperature", temp);
-  Firebase.setFloat(firebaseData, "/luminance", lumi);
-  Firebase.setFloat(firebaseData, "/moisture", mois);
+  Firebase.setFloat(firebaseData, "/ECOPOT/HUMIDITY", humi);
+  Firebase.setFloat(firebaseData, "/ECOPOT/TEMPERATURE", temp);
+  Firebase.setFloat(firebaseData, "/ECOPOT/LUMINANCE", lumi);
+  Firebase.setFloat(firebaseData, "/ECOPOT/MOISTURE", mois);
+}
+
+void potControllerOpt(){
+  if (Firebase.getBool(firebaseData, "/ECOPOT/POT_CONTROL/LED")) {
+    if (firebaseData.dataType() == "boolean") {
+      bool val = firebaseData.boolData();
+      Serial.print("LED: ");
+      Serial.println(val);
+      led_controller = val;
+      
+      if(led_controller) digitalWrite(led_pin, HIGH);
+      else digitalWrite(led_pin, LOW);
+    }
+  } 
+  if (Firebase.getBool(firebaseData, "/ECOPOT/POT_CONTROL/PSB")) {
+    if (firebaseData.dataType() == "boolean") {
+      bool val = firebaseData.boolData();
+      Serial.print("PSB: ");
+      Serial.println(val);
+      psb_controller = val;
+
+      if(psb_controller) digitalWrite(psb_pin, HIGH);
+      else digitalWrite(psb_pin, LOW);
+    }
+  } 
+  if (Firebase.getBool(firebaseData, "/ECOPOT/POT_CONTROL/WATER")) {
+    if (firebaseData.dataType() == "boolean") {
+      bool val = firebaseData.boolData();
+      Serial.print("WATER: ");
+      Serial.println(val);
+      water_controller = val;
+
+      if(water_controller) digitalWrite(water_pin, HIGH);
+      else digitalWrite(water_pin, LOW);
+    }
+  } 
 }
